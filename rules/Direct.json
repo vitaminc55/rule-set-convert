@@ -4,6 +4,7 @@
         {
             "domain": [
                 "gist.githubusercontent.com",
+                "baidu.com",
                 "api.music.bool.run"
             ],
             "domain_suffix": [
