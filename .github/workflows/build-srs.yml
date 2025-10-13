@@ -1,9 +1,9 @@
-name: Build Sing-Box SRS Rule Set
+name: Build Sing-Box Rule Set (.srs)
 
 on:
   push:
     branches:
-      - main  # 或你用的分支，如 master
+      - main
   pull_request:
     branches:
       - main
@@ -14,38 +14,40 @@ jobs:
 
     steps:
       # Step 1: 检出代码
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 2: 设置 Linux 环境 & 下载 xray-rule-provider
-      - name: Set up and run xray-rule-provider
+      # Step 2: 下载最新版 sing-box（Linux amd64）
+      - name: Download sing-box binary
         run: |
-          # 安装必要的工具（如 curl, tar）
-          sudo apt-get update
-          sudo apt-get install -y curl tar
+          # 获取最新的 release（你也可以固定版本，比如 v1.9.0）
+          SINGBOX_RELEASE=$(curl -s https://api.github.com/repos/sagernet/sing-box/releases/latest | grep tag_name | cut -d '"' -f 4)
+          echo "Latest Sing-Box release: $SINGBOX_RELEASE"
 
-          # 创建输出目录
+          # 下载 Linux amd64 的 sing-box 压缩包
+          URL="https://github.com/sagernet/sing-box/releases/download/$SINGBOX_RELEASE/sing-box-linux-amd64-$SINGBOX_RELEASE.tar.gz"
+          echo "Downloading from $URL"
+          curl -L -o sing-box.tar.gz "$URL"
+
+          # 解压
+          mkdir -p sing-box-bin
+          tar -xzf sing-box.tar.gz -C sing-box-bin
+
+          # 赋予执行权限
+          chmod +x sing-box-bin/sing-box
+
+          # 可选：查看版本
+          ./sing-box-bin/sing-box -v
+
+      # Step 3: 使用 sing-box rule-set compile 编译 JSON 为 .srs
+      - name: Compile Rule Set JSON to .srs
+        run: |
           mkdir -p output
 
-          # 下载 xray-rule-provider (请检查最新 Release)
-          RULE_PROVIDER_URL=https://github.com/GeQ1an/xray-rule-provider/releases/latest/download/xray-rule-provider_linux_amd64.tar.gz
-          curl -L -o xray-rule-provider.tar.gz "$RULE_PROVIDER_URL"
-          tar -xzf xray-rule-provider.tar.gz
-          chmod +x xray-rule-provider
+          # 调用 sing-box 进行编译
+          ./sing-box-bin/sing-box rule-set compile \
+            --input rules/my-rule-set.json \
+            --output output/my-rule-set.srs
 
-          # 假设你的输入 JSON 是 rules/my-rules.json
-          # 输出为 output/my-rules.srs
-          ./xray-rule-provider \
-            --json rules/my-rules.json \
-            --output output/my-rules.srs
-
-          # （可选）打印是否成功
+          # 查看结果
           ls -lh output/
-
-      # Step 3: （可选）把生成的 .srs 文件保存或发布
-      # 比如上传为 GitHub Action 的 Artifact，或发布到 Release
-      - name: Upload SRS file
-        uses: actions/upload-artifact@v3
-        with:
-          name: generated-srs-file
-          path: output/my-rules.srs
