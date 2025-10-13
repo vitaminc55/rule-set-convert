@@ -120,7 +120,7 @@ jobs:
 
           # 清空或覆盖该目录下的旧 .srs 文件（可选）
           # 你可以选择删除旧文件，或者直接覆盖
-          # rm -f "Sing-Box/RuleSet/"*.srs
+          rm -f "Sing-Box/RuleSet/"*.srs
 
           # 从 GitHub Actions 的 output/ 目录中复制所有 .srs 文件到 Codeberg 的 Sing-Box/RuleSet/ 目录
           cp -f ../output/*.srs "Sing-Box/RuleSet/"
