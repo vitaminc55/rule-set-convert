@@ -38,43 +38,61 @@ jobs:
           chmod +x sing-box-bin/sing-box-1.12.9-linux-amd64/sing-box
 
 
-# Step 3: 获取本次提交中变更的文件列表，并筛选出 rules/ 目录下的 .json 文件
-      - name: Detect changed JSON rule files in rules/
-        id: detect-changed-json
+# Step 3: 安全获取本次提交中变更的文件列表（兼容 push / PR / 首次提交）
+      - name: Get changed files
+        id: get-changed-files
         run: |
-          # 获取当前提交和上一次提交之间变化的文件
-          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+          echo "当前触发事件类型: ${{ github.event_name }}"
+          
+          CHANGED_FILES=()
 
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            # Push 事件：比较 HEAD^ 和 HEAD
+            echo "检测到 push 事件，尝试获取 HEAD^ 和 HEAD 之间的变更文件..."
+            CHANGED_FILES=$(git diff --name-only HEAD^ HEAD 2>/dev/null || echo "")
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # Pull Request 事件：使用 PR 的 head 和 base
+            echo "检测到 pull_request 事件，尝试获取 PR 变更文件..."
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} 2>/dev/null || echo "")
+          else
+            # 其它事件（如 workflow_dispatch），默认为空或使用 HEAD 提交（不推荐）
+            echo "当前事件类型 ${{ github.event_name }} 暂不支持自动检测变更文件，跳过。"
+            CHANGED_FILES=""
+          fi
+
+          # 检查是否获取到内容
+          if [[ -z "$CHANGED_FILES" ]]; then
+            echo "⚠️ 未检测到变更文件或事件不支持，跳过编译。"
+            echo "CHANGED_FILES=<空>"
+            echo "result<<EOF" >> $GITHUB_ENV
+            echo "" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+            exit 0
+          fi
+
+          # 输出所有变更的文件
           echo "所有变更的文件："
           echo "$CHANGED_FILES"
 
           # 只筛选出 rules/ 目录下的 .json 文件
           JSON_FILES=()
           for FILE in $CHANGED_FILES; do
-            if [[ $FILE == rules/*.json ]]; then
+            if [[ $FILE =~ ^rules/.*\.json$ ]]; then
               JSON_FILES+=("$FILE")
             fi
           done
 
-          # 输出找到的 JSON 文件
-          echo "检测到以下 rules/ 目录下的 JSON 文件发生变更："
+          # 返回给后续步骤使用
+          echo "筛选出的 rules/*.json 文件："
           for FILE in "${JSON_FILES[@]}"; do
             echo "  - $FILE"
           done
 
-          # 将文件列表转换为 GitHub 输出变量（可选，也可直接在后续步骤用数组）
-          # 这里我们直接用 shell 变量在同一个 step/jobs 中处理
-          echo "JSON_FILES<<EOF" >> $GITHUB_ENV
-          for FILE in "${JSON_FILES[@]}"; do
-            echo "$FILE" >> $GITHUB_ENV
-          done
-          echo "EOF" >> $GITHUB_ENV
-
-          # 更实用的方式：直接在后续步骤用 shell 循环处理（推荐，不用 env）
-          # 我们直接把 JSON_FILES 数组保留在当前 step，然后在下一步使用 bash 处理
-          # 所以接下来，我们把 JSON_FILES 以空格分隔字符串形式存入环境变量
+          # 将文件列表转换为环境变量（每行一个文件）
           echo "JSON_FILES_LIST<<EOF" >> $GITHUB_ENV
-          printf "%s\n" "${JSON_FILES[@]}" >> $GITHUB_ENV
+          for FILE in "${JSON_FILES[@]}"; do
+            echo "$FILE"
+          done
           echo "EOF" >> $GITHUB_ENV
 
       # Step 4: 遍历所有变更的 JSON 文件，逐个编译为 .srs
