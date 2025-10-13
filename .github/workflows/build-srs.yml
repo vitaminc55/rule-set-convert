@@ -38,45 +38,42 @@ jobs:
           chmod +x sing-box-bin/sing-box-1.12.9-linux-amd64/sing-box
 
 
-# Step 3: 安全获取本次提交中变更的文件列表（兼容 push / PR / 首次提交）
-      - name: Get changed files
+# ✅ Step 3: 安全获取当前提交中修改的文件列表（推荐方式，适用于 push）
+      - name: Get changed files in current commit (push)
         id: get-changed-files
         run: |
           echo "当前触发事件类型: ${{ github.event_name }}"
-          
+
           CHANGED_FILES=()
 
           if [[ "${{ github.event_name }}" == "push" ]]; then
-            # Push 事件：比较 HEAD^ 和 HEAD
-            echo "检测到 push 事件，尝试获取 HEAD^ 和 HEAD 之间的变更文件..."
-            CHANGED_FILES=$(git diff --name-only HEAD^ HEAD 2>/dev/null || echo "")
+            echo "检测到 push 事件，尝试获取当前提交（HEAD）中修改的文件..."
+            # ✅ 使用 git show --name-only HEAD 获取当前提交修改的文件
+            CHANGED_FILES=$(git show --name-only --pretty=format:'' HEAD 2>/dev/null || echo "")
+
           elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            # Pull Request 事件：使用 PR 的 head 和 base
-            echo "检测到 pull_request 事件，尝试获取 PR 变更文件..."
+            echo "检测到 pull_request 事件，尝试获取 PR 中变更的文件..."
+            # 尝试使用 PR 的 base 和 head SHA（备用方案）
             CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} 2>/dev/null || echo "")
+
           else
-            # 其它事件（如 workflow_dispatch），默认为空或使用 HEAD 提交（不推荐）
             echo "当前事件类型 ${{ github.event_name }} 暂不支持自动检测变更文件，跳过。"
             CHANGED_FILES=""
           fi
 
           echo ""
           echo "📂 所有检测到的变更文件（原始列表）："
-          echo "$CHANGED_FILES"  # 🧠 重点：打印所有变更文件
+          echo "$CHANGED_FILES"
 
-          # 检查是否获取到内容
+          # 检查是否为空
           if [[ -z "$CHANGED_FILES" ]]; then
-            echo "⚠️ 未检测到变更文件或事件不支持，跳过编译。"
+            echo "⚠️ 未检测到任何变更文件，可能是首次提交或事件类型不支持。"
             echo "CHANGED_FILES=<空>"
-            echo "result<<EOF" >> $GITHUB_ENV
-            echo "" >> $GITHUB_ENV
+            echo "JSON_FILES_LIST<<EOF" >> $GITHUB_ENV
+            echo ""
             echo "EOF" >> $GITHUB_ENV
             exit 0
           fi
-
-          # 输出所有变更的文件
-          echo "所有变更的文件："
-          echo "$CHANGED_FILES"
 
           # 只筛选出 rules/ 目录下的 .json 文件
           JSON_FILES=()
@@ -86,13 +83,17 @@ jobs:
             fi
           done
 
-          # 返回给后续步骤使用
-          echo "筛选出的 rules/*.json 文件："
-          for FILE in "${JSON_FILES[@]}"; do
-            echo "  - $FILE"
-          done
+          echo ""
+          echo "🔍 筛选出的 rules/ 目录下的 .json 文件："
+          if [ ${#JSON_FILES[@]} -eq 0 ]; then
+            echo "  ⚠️ 未发现任何 rules/*.json 文件变更"
+          else
+            for FILE in "${JSON_FILES[@]}"; do
+              echo "  ✅ $FILE"
+            done
+          fi
 
-          # 将文件列表转换为环境变量（每行一个文件）
+          # 传递给后续步骤
           echo "JSON_FILES_LIST<<EOF" >> $GITHUB_ENV
           for FILE in "${JSON_FILES[@]}"; do
             echo "$FILE"
