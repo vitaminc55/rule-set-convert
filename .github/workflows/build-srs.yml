@@ -20,23 +20,23 @@ jobs:
       # Step 2: 下载最新版 sing-box（Linux amd64）
       - name: Download sing-box binary
         run: |
-          # 获取最新的 release（你也可以固定版本，比如 v1.9.0）
-          SINGBOX_RELEASE=$(curl -s https://api.github.com/repos/sagernet/sing-box/releases/latest | grep tag_name | cut -d '"' -f 4)
-          echo "Latest Sing-Box release: $SINGBOX_RELEASE"
+          # 使用固定版本，推荐不要用 latest
+          SINGBOX_VERSION=v1.12.9
 
-          # 下载 Linux amd64 的 sing-box 压缩包
-          URL="https://github.com/sagernet/sing-box/releases/download/$SINGBOX_RELEASE/sing-box-linux-amd64-$SINGBOX_RELEASE.tar.gz"
-          echo "Downloading from $URL"
+          # ✅ 正确的下载链接格式
+          URL="https://github.com/sagernet/sing-box/releases/download/$SINGBOX_VERSION/sing-box-$SINGBOX_VERSION-linux-amd64.tar.gz"
+
+          echo "Downloading Sing-Box from: $URL"
           curl -L -o sing-box.tar.gz "$URL"
 
-          # 解压
+          # 解压到目录
           mkdir -p sing-box-bin
           tar -xzf sing-box.tar.gz -C sing-box-bin
 
           # 赋予执行权限
           chmod +x sing-box-bin/sing-box
 
-          # 可选：查看版本
+          # 可选：打印版本信息
           ./sing-box-bin/sing-box -v
 
       # Step 3: 使用 sing-box rule-set compile 编译 JSON 为 .srs
