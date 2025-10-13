@@ -44,8 +44,7 @@ jobs:
 
           # 调用 sing-box 进行编译
           ./sing-box-bin/sing-box-1.12.9-linux-amd64/sing-box rule-set compile \
-            --input rules/my-rule-set.json \
-            --output output/my-rule-set.srs
+            --output output/my-rule-set.srs rules/my-rule-set.json
 
           # 查看结果
           ls -lh output/
