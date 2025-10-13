@@ -94,7 +94,7 @@ jobs:
           # ======================
           # 配置你的 Codeberg 私有仓库地址
           # ======================
-          CODEBERG_REPO="https://codeberg.org/Roc/Proxy-All.git"
+          CODEBERG_REPO="codeberg.org/Roc/Proxy-All.git"
           # 替换为你的实际 Codeberg 用户名 和 私有仓库名
 
           # 本地临时克隆目录
