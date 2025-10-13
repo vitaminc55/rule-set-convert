@@ -48,3 +48,45 @@ jobs:
 
           # 查看结果
           ls -lh output/
+# =============================
+      # 假设你已经成功生成了 output/my-rule-set.srs
+      # =============================
+
+      # Step 4: 将生成的 .srs 文件提交并推送到 GitHub 仓库
+      - name: Commit and push generated .srs file
+        if: success()  # 仅在前面步骤成功时运行
+        run: |
+          # 进入项目根目录（如果之前在子目录操作，确保回到仓库根目录）
+          cd "${GITHUB_WORKSPACE}"
+
+          # 检查 output/my-rule-set.srs 是否存在
+          if [ -f "output/my-rule-set.srs" ]; then
+            echo "✅ 找到生成的 .srs 文件，准备提交..."
+
+            # 初始化 git（如果尚未初始化，但通常 Actions 已经 clone 了仓库）
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+
+            # 使用你的个人 Token，而不是 GITHUB_TOKEN（因为后者可能无权 push）
+            git remote set-url origin https://x-access-token:${{ secrets.GIT_PAT }}@github.com/${{ github.repository }}.git
+
+            # 检查是否有更改
+            git status
+
+            # 添加生成的文件
+            git add output/my-rule-set.srs
+
+            # 检查是否有要提交的文件
+            if git diff --quiet --cached; then
+              echo "ℹ️ 没有文件变化，跳过提交。"
+            else
+              echo "📝 提交生成的 .srs 文件..."
+              git commit -m "🤖 Auto: Update generated SRS rule set file [skip ci]"
+
+              # 推送到当前分支，比如 main
+              git push origin HEAD:${{ github.ref }}
+              echo "✅ 已推送 .srs 文件到 GitHub 仓库"
+            fi
+          else
+            echo "❌ 未找到 output/my-rule-set.srs 文件，跳过提交。"
+          fi
