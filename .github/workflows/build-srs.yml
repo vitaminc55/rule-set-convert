@@ -22,9 +22,10 @@ jobs:
         run: |
           # 使用固定版本，推荐不要用 latest
           SINGBOX_VERSION=v1.12.9
+          SINGBOX_VERSIONN=1.12.9
 
           # ✅ 正确的下载链接格式
-          URL="https://github.com/sagernet/sing-box/releases/download/$SINGBOX_VERSION/sing-box-$SINGBOX_VERSION-linux-amd64.tar.gz"
+          URL="https://github.com/sagernet/sing-box/releases/download/$SINGBOX_VERSION/sing-box-$SINGBOX_VERSIONN-linux-amd64.tar.gz"
 
           echo "Downloading Sing-Box from: $URL"
           curl -L -o sing-box.tar.gz "$URL"
