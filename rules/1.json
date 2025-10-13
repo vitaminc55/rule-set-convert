@@ -1,0 +1,20 @@
+{
+    "version": 1,
+    "rules": [
+        {
+            "domain": [
+                "downloads.wisecleaner.com"
+            ],
+            "domain_suffix": [
+                "googleapis.cn",
+                "iturrit.com",
+                "metacubex.one",
+                "crxsoso.com",
+                "oschina.net",
+                "155.fun",
+                "355.fun",
+                "us.kg"
+            ]
+        }
+    ]
+}
