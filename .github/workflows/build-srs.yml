@@ -37,56 +37,155 @@ jobs:
           # 赋予执行权限
           chmod +x sing-box-bin/sing-box-1.12.9-linux-amd64/sing-box
 
-      # Step 3: 使用 sing-box rule-set compile 编译 JSON 为 .srs
-      - name: Compile Rule Set JSON to .srs
+
+# Step 3: 获取本次提交中变更的文件列表，并筛选出 rules/ 目录下的 .json 文件
+      - name: Detect changed JSON rule files in rules/
+        id: detect-changed-json
         run: |
-          mkdir -p output
+          # 获取当前提交和上一次提交之间变化的文件
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
 
-          # 调用 sing-box 进行编译
-          ./sing-box-bin/sing-box-1.12.9-linux-amd64/sing-box rule-set compile \
-            --output output/my-rule-set.srs rules/my-rule-set.json
+          echo "所有变更的文件："
+          echo "$CHANGED_FILES"
 
-          # 查看结果
-          ls -lh output/
-# =============================
-      # 假设你已经成功生成了 output/my-rule-set.srs
-      # =============================
+          # 只筛选出 rules/ 目录下的 .json 文件
+          JSON_FILES=()
+          for FILE in $CHANGED_FILES; do
+            if [[ $FILE == rules/*.json ]]; then
+              JSON_FILES+=("$FILE")
+            fi
+          done
 
-      # Step 4: 将生成的 .srs 文件提交并推送到 GitHub 仓库
-      - name: Commit and push generated .srs file
-        if: success()  # 仅在前面步骤成功时运行
+          # 输出找到的 JSON 文件
+          echo "检测到以下 rules/ 目录下的 JSON 文件发生变更："
+          for FILE in "${JSON_FILES[@]}"; do
+            echo "  - $FILE"
+          done
+
+          # 将文件列表转换为 GitHub 输出变量（可选，也可直接在后续步骤用数组）
+          # 这里我们直接用 shell 变量在同一个 step/jobs 中处理
+          echo "JSON_FILES<<EOF" >> $GITHUB_ENV
+          for FILE in "${JSON_FILES[@]}"; do
+            echo "$FILE" >> $GITHUB_ENV
+          done
+          echo "EOF" >> $GITHUB_ENV
+
+          # 更实用的方式：直接在后续步骤用 shell 循环处理（推荐，不用 env）
+          # 我们直接把 JSON_FILES 数组保留在当前 step，然后在下一步使用 bash 处理
+          # 所以接下来，我们把 JSON_FILES 以空格分隔字符串形式存入环境变量
+          echo "JSON_FILES_LIST<<EOF" >> $GITHUB_ENV
+          printf "%s\n" "${JSON_FILES[@]}" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      # Step 4: 遍历所有变更的 JSON 文件，逐个编译为 .srs
+      - name: Compile changed JSON rule files into .srs
         run: |
-          # 进入项目根目录（如果之前在子目录操作，确保回到仓库根目录）
+          # 从环境变量中读取 JSON 文件列表（每行一个）
+          # 注意：由于 GitHub Actions 的环境变量不支持直接传递数组，我们改用按行存储
+          MAPFILE=()
+          while IFS= read -r line; do
+            if [[ -n "$line" && "$line" =~ ^rules/.*\.json$ ]]; then
+              MAPFILE+=("$line")
+            fi
+          done <<< "$(echo "${{ env.JSON_FILES_LIST }}" | tr ' ' '\n')"
+
+          # 如果没有检测到任何变更的 JSON 文件，则跳过
+          if [ ${#MAPFILE[@]} -eq 0 ]; then
+            echo "ℹ️ 未检测到 rules/ 目录下有变更的 .json 文件，跳过编译。"
+            exit 0
+          fi
+
+          echo "开始编译以下 JSON 规则文件："
+          for INPUT_JSON in "${MAPFILE[@]}"; do
+            echo "  - $INPUT_JSON"
+
+            # 计算输出 .srs 文件路径，比如 rules/foo.json → output/foo.srs
+            OUTPUT_SRS="output/$(basename "$INPUT_JSON" .json).srs"
+
+            # 调用 sing-box 编译
+            ./sing-box-bin/sing-box-1.12.9-linux-amd64/sing-box rule-set compile \
+              --output "$OUTPUT_SRS" "$INPUT_JSON"
+
+            echo "✅ 已生成：$OUTPUT_SRS"
+          done
+
+      # Step 5: 将所有生成的 .srs 文件添加、提交并推送
+      - name: Commit and push generated .srs files
+        if: success()
+        run: |
           cd "${GITHUB_WORKSPACE}"
 
-          # 检查 output/my-rule-set.srs 是否存在
-          if [ -f "output/my-rule-set.srs" ]; then
-            echo "✅ 找到生成的 .srs 文件，准备提交..."
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-            # 初始化 git（如果尚未初始化，但通常 Actions 已经 clone 了仓库）
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
+          # 使用 PAT 推送
+          git remote set-url origin https://x-access-token:${{ secrets.GIT_PAT }}@github.com/${{ github.repository }}.git
 
-            # 使用你的个人 Token，而不是 GITHUB_TOKEN（因为后者可能无权 push）
-            git remote set-url origin https://x-access-token:${{ secrets.GIT_PAT }}@github.com/${{ github.repository }}.git
+          # 添加所有 output/ 目录下新生成的 .srs 文件
+          git add output/*.srs
 
-            # 检查是否有更改
-            git status
-
-            # 添加生成的文件
-            git add output/my-rule-set.srs
-
-            # 检查是否有要提交的文件
-            if git diff --quiet --cached; then
-              echo "ℹ️ 没有文件变化，跳过提交。"
-            else
-              echo "📝 提交生成的 .srs 文件..."
-              git commit -m "🤖 Auto: Update generated SRS rule set file [skip ci]"
-
-              # 推送到当前分支，比如 main
-              git push origin HEAD:${{ github.ref }}
-              echo "✅ 已推送 .srs 文件到 GitHub 仓库"
-            fi
+          # 检查是否有变化
+          if git diff --quiet --cached; then
+            echo "ℹ️ 没有 .srs 文件变化，跳过提交。"
           else
-            echo "❌ 未找到 output/my-rule-set.srs 文件，跳过提交。"
+            echo "📝 提交生成的 .srs 文件..."
+            git commit -m "🤖 Auto: Update generated SRS rule set files [skip ci]"
+
+            git push origin HEAD:${{ github.ref }}
+            echo "✅ 已推送更新的 .srs 文件到 GitHub 仓库"
           fi
+
+
+#       # Step 3: 使用 sing-box rule-set compile 编译 JSON 为 .srs
+#       - name: Compile Rule Set JSON to .srs
+#         run: |
+#           mkdir -p output
+
+#           # 调用 sing-box 进行编译
+#           ./sing-box-bin/sing-box-1.12.9-linux-amd64/sing-box rule-set compile \
+#             --output output/my-rule-set.srs rules/my-rule-set.json
+
+#           # 查看结果
+#           ls -lh output/
+# # =============================
+#       # 假设你已经成功生成了 output/my-rule-set.srs
+#       # =============================
+
+#       # Step 4: 将生成的 .srs 文件提交并推送到 GitHub 仓库
+#       - name: Commit and push generated .srs file
+#         if: success()  # 仅在前面步骤成功时运行
+#         run: |
+#           # 进入项目根目录（如果之前在子目录操作，确保回到仓库根目录）
+#           cd "${GITHUB_WORKSPACE}"
+
+#           # 检查 output/my-rule-set.srs 是否存在
+#           if [ -f "output/my-rule-set.srs" ]; then
+#             echo "✅ 找到生成的 .srs 文件，准备提交..."
+
+#             # 初始化 git（如果尚未初始化，但通常 Actions 已经 clone 了仓库）
+#             git config user.name "github-actions[bot]"
+#             git config user.email "github-actions[bot]@users.noreply.github.com"
+
+#             # 使用你的个人 Token，而不是 GITHUB_TOKEN（因为后者可能无权 push）
+#             git remote set-url origin https://x-access-token:${{ secrets.GIT_PAT }}@github.com/${{ github.repository }}.git
+
+#             # 检查是否有更改
+#             git status
+
+#             # 添加生成的文件
+#             git add output/my-rule-set.srs
+
+#             # 检查是否有要提交的文件
+#             if git diff --quiet --cached; then
+#               echo "ℹ️ 没有文件变化，跳过提交。"
+#             else
+#               echo "📝 提交生成的 .srs 文件..."
+#               git commit -m "🤖 Auto: Update generated SRS rule set file [skip ci]"
+
+#               # 推送到当前分支，比如 main
+#               git push origin HEAD:${{ github.ref }}
+#               echo "✅ 已推送 .srs 文件到 GitHub 仓库"
+#             fi
+#           else
+#             echo "❌ 未找到 output/my-rule-set.srs 文件，跳过提交。"
+#           fi
