@@ -60,6 +60,10 @@ jobs:
             CHANGED_FILES=""
           fi
 
+          echo ""
+          echo "📂 所有检测到的变更文件（原始列表）："
+          echo "$CHANGED_FILES"  # 🧠 重点：打印所有变更文件
+
           # 检查是否获取到内容
           if [[ -z "$CHANGED_FILES" ]]; then
             echo "⚠️ 未检测到变更文件或事件不支持，跳过编译。"
