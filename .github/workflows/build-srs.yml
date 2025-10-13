@@ -35,10 +35,10 @@ jobs:
           tar -xzf sing-box.tar.gz -C sing-box-bin
 
           # 赋予执行权限
-          chmod +x sing-box-bin/sing-box
+          chmod +x sing-box-bin/sing-box-1.12.9-linux-amd64/sing-box
 
           # 可选：打印版本信息
-          ./sing-box-bin/sing-box -v
+          ./sing-box-bin/sing-box-1.12.9-linux-amd64/sing-box -v
 
       # Step 3: 使用 sing-box rule-set compile 编译 JSON 为 .srs
       - name: Compile Rule Set JSON to .srs
@@ -46,7 +46,7 @@ jobs:
           mkdir -p output
 
           # 调用 sing-box 进行编译
-          ./sing-box-bin/sing-box rule-set compile \
+          ./sing-box-bin/sing-box-1.12.9-linux-amd64/sing-box rule-set compile \
             --input rules/my-rule-set.json \
             --output output/my-rule-set.srs
 
