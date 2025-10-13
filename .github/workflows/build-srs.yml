@@ -134,12 +134,13 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
 
+            git add "Sing-Box/RuleSet/"*.srs
+            
             # 检查是否有变更
             if git diff --quiet --cached; then
               echo "ℹ️ 没有 .srs 文件变化，跳过提交。"
             else
               echo "📝 提交 .srs 文件到 Codeberg 私有仓库..."
-              git add "Sing-Box/RuleSet/"*.srs
 
               git commit -m "🤖 Auto: Update SRS files in Sing-Box/RuleSet/ from GitHub Actions [skip ci]"
 
