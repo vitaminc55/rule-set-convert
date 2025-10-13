@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "type": "field",
+      "outboundTag": "proxy",
+      "domain": ["example.com", "google.com", "github.com"]
+    },
+    {
+      "type": "field",
+      "outboundTag": "direct",
+      "domain": ["baidu.com", "qq.com", "163.com"]
+    }
+  ]
+}
