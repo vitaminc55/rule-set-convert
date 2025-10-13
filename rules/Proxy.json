@@ -1,0 +1,27 @@
+{
+    "version": 1,
+    "rules": [
+        {
+            "domain": [
+                "downloads.wisecleaner.com"
+            ],
+            "domain_suffix": [
+                "scriptcat.org",
+                "jubt5.one",
+                "jubt4.one",
+                "jubt13.xyz",
+                "jubt12.xyz",
+                "jubt.top",
+                "1jubt.top",
+                "googleapis.cn",
+                "iturrit.com",
+                "metacubex.one",
+                "crxsoso.com",
+                "oschina.net",
+                "155.fun",
+                "355.fun",
+                "us.kg"
+            ]
+        }
+    ]
+}

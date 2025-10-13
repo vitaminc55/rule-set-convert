@@ -1,0 +1,21 @@
+{
+    "version": 1,
+    "rules": [
+        {
+            "domain": [
+                "gist.githubusercontent.com",
+                "api.music.bool.run"
+            ],
+            "domain_suffix": [
+                "linux.do",
+                "gitlab-assets.oss-cn-hongkong.aliyuncs.com",
+                "gitlab-static.net",
+                "gitlab.com",
+                "gitlab.net",
+                "gitter-static.net",
+                "gitter.im",
+                "!googleapis.cn"
+            ]
+        }
+    ]
+}
