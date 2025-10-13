@@ -37,92 +37,23 @@ jobs:
           # 赋予执行权限
           chmod +x sing-box-bin/sing-box-1.12.9-linux-amd64/sing-box
 
-
-# ✅ Step 3: 安全获取当前提交中修改的文件列表（推荐方式，适用于 push）
-      - name: Get changed files in current commit (push)
-        id: get-changed-files
+# Step 3: 定义你要编译的 rules/*.json 文件列表（手动指定，不要自动检测）
+      - name: Compile specific JSON rule files into .srs
         run: |
-          echo "当前触发事件类型: ${{ github.event_name }}"
+          # 📌 在这里指定你要编译的 JSON 文件（放在 rules/ 目录下）
+          # 你可以修改下面的数组，添加或删除文件
+          RULE_JSON_FILES=(
+            "rules/1.json"
+            "rules/2.json"
+            "rules/my-rule-set.json"
+            # 添加更多文件...
+          )
 
-          CHANGED_FILES=()
-
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            echo "检测到 push 事件，尝试获取当前提交（HEAD）中修改的文件..."
-            # ✅ 使用 git show --name-only HEAD 获取当前提交修改的文件
-            CHANGED_FILES=$(git show --name-only --pretty=format:'' HEAD 2>/dev/null || echo "")
-
-          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "检测到 pull_request 事件，尝试获取 PR 中变更的文件..."
-            # 尝试使用 PR 的 base 和 head SHA（备用方案）
-            CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} 2>/dev/null || echo "")
-
-          else
-            echo "当前事件类型 ${{ github.event_name }} 暂不支持自动检测变更文件，跳过。"
-            CHANGED_FILES=""
-          fi
-
-          echo ""
-          echo "📂 所有检测到的变更文件（原始列表）："
-          echo "$CHANGED_FILES"
-
-          # 检查是否为空
-          if [[ -z "$CHANGED_FILES" ]]; then
-            echo "⚠️ 未检测到任何变更文件，可能是首次提交或事件类型不支持。"
-            echo "CHANGED_FILES=<空>"
-            echo "JSON_FILES_LIST<<EOF" >> $GITHUB_ENV
-            echo ""
-            echo "EOF" >> $GITHUB_ENV
-            exit 0
-          fi
-
-          # 只筛选出 rules/ 目录下的 .json 文件
-          JSON_FILES=()
-          for FILE in $CHANGED_FILES; do
-            if [[ $FILE =~ ^rules/.*\.json$ ]]; then
-              JSON_FILES+=("$FILE")
-            fi
-          done
-
-          echo ""
-          echo "🔍 筛选出的 rules/ 目录下的 .json 文件："
-          if [ ${#JSON_FILES[@]} -eq 0 ]; then
-            echo "  ⚠️ 未发现任何 rules/*.json 文件变更"
-          else
-            for FILE in "${JSON_FILES[@]}"; do
-              echo "  ✅ $FILE"
-            done
-          fi
-
-          # 传递给后续步骤
-          echo "JSON_FILES_LIST<<EOF" >> $GITHUB_ENV
-          for FILE in "${JSON_FILES[@]}"; do
-            echo "$FILE"
-          done
-          echo "EOF" >> $GITHUB_ENV
-
-      # Step 4: 遍历所有变更的 JSON 文件，逐个编译为 .srs
-      - name: Compile changed JSON rule files into .srs
-        run: |
-          # 从环境变量中读取 JSON 文件列表（每行一个）
-          # 注意：由于 GitHub Actions 的环境变量不支持直接传递数组，我们改用按行存储
-          MAPFILE=()
-          while IFS= read -r line; do
-            if [[ -n "$line" && "$line" =~ ^rules/.*\.json$ ]]; then
-              MAPFILE+=("$line")
-            fi
-          done <<< "$(echo "${{ env.JSON_FILES_LIST }}" | tr ' ' '\n')"
-
-          # 如果没有检测到任何变更的 JSON 文件，则跳过
-          if [ ${#MAPFILE[@]} -eq 0 ]; then
-            echo "ℹ️ 未检测到 rules/ 目录下有变更的 .json 文件，跳过编译。"
-            exit 0
-          fi
-
-          echo "开始编译以下 JSON 规则文件："
-          for INPUT_JSON in "${MAPFILE[@]}"; do
+          echo "开始编译以下规则文件："
+          for INPUT_JSON in "${RULE_JSON_FILES[@]}"; do
             echo "  - $INPUT_JSON"
 
-            # 计算输出 .srs 文件路径，比如 rules/foo.json → output/foo.srs
+            # 计算对应的输出 .srs 文件路径，比如 rules/rule1.json → output/rule1.srs
             OUTPUT_SRS="output/$(basename "$INPUT_JSON" .json).srs"
 
             # 调用 sing-box 编译
@@ -132,19 +63,16 @@ jobs:
             echo "✅ 已生成：$OUTPUT_SRS"
           done
 
-      # Step 5: 将所有生成的 .srs 文件添加、提交并推送
+      # Step 4: 将生成的 .srs 文件添加、提交并推送到仓库
       - name: Commit and push generated .srs files
-        if: success()
         run: |
-          cd "${GITHUB_WORKSPACE}"
-
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # 使用 PAT 推送
+          # 使用 Personal Access Token 推送（推荐，有写入权限）
           git remote set-url origin https://x-access-token:${{ secrets.GIT_PAT }}@github.com/${{ github.repository }}.git
 
-          # 添加所有 output/ 目录下新生成的 .srs 文件
+          # 添加 output/ 目录下所有 .srs 文件（会被覆盖）
           git add output/*.srs
 
           # 检查是否有变化
@@ -152,7 +80,7 @@ jobs:
             echo "ℹ️ 没有 .srs 文件变化，跳过提交。"
           else
             echo "📝 提交生成的 .srs 文件..."
-            git commit -m "🤖 Auto: Update generated SRS rule set files [skip ci]"
+            git commit -m "🤖 Auto: Update selected SRS rule set files [skip ci]"
 
             git push origin HEAD:${{ github.ref }}
             echo "✅ 已推送更新的 .srs 文件到 GitHub 仓库"
