@@ -86,6 +86,70 @@ jobs:
             echo "✅ 已推送更新的 .srs 文件到 GitHub 仓库"
           fi
 
+# Step 5: 将 output/*.srs 文件推送到 Codeberg 私有仓库的 Sing-Box/RuleSet/ 目录
+      - name: Push output .srs files to Codeberg (into Sing-Box/RuleSet/)
+        run: |
+          echo "开始推送 output/*.srs 文件到 Codeberg 私有仓库的 Sing-Box/RuleSet/ 目录..."
+
+          # ======================
+          # 配置你的 Codeberg 私有仓库地址
+          # ======================
+          CODEBERG_REPO="https://codeberg.org/Roc/Proxy-All.git"
+          # 替换为你的实际 Codeberg 用户名 和 私有仓库名
+
+          # 本地临时克隆目录
+          CODEBERG_DIR="./codeberg-srs-repo"
+
+          # 删除旧的克隆（如果有）
+          rm -rf "$CODEBERG_DIR"
+
+          # 克隆 Codeberg 私有仓库（使用 GitHub Secrets 中的 PAT）
+          git clone "https://x-access-token:${{ secrets.Codeberg }}@$CODEBERG_REPO" "$CODEBERG_DIR"
+
+          if [ $? -ne 0 ]; then
+            echo "❌ 克隆 Codeberg 私有仓库失败！请检查："
+            echo "1. CODEBERG_REPO 是否正确（https://codeberg.org/用户名/仓库名.git）"
+            echo "2. CODEBERG_PAT 是否正确且拥有 write_repository 权限"
+            exit 1
+          fi
+
+          cd "$CODEBERG_DIR"
+
+          # 确保目标目录存在: Sing-Box/RuleSet/
+          mkdir -p "Sing-Box/RuleSet"
+
+          # 清空或覆盖该目录下的旧 .srs 文件（可选）
+          # 你可以选择删除旧文件，或者直接覆盖
+          # rm -f "Sing-Box/RuleSet/"*.srs
+
+          # 从 GitHub Actions 的 output/ 目录中复制所有 .srs 文件到 Codeberg 的 Sing-Box/RuleSet/ 目录
+          cp -f ../output/*.srs "Sing-Box/RuleSet/"
+
+          # 检查是否复制成功
+          if ls "Sing-Box/RuleSet/"*.srs >/dev/null 2>&1; then
+            echo "找到以下 .srs 文件，准备提交到 Codeberg 的 Sing-Box/RuleSet/ 目录："
+            ls -lh "Sing-Box/RuleSet/"*.srs
+
+            # Git 配置
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+
+            # 检查是否有变更
+            if git diff --quiet --cached; then
+              echo "ℹ️ 没有 .srs 文件变化，跳过提交。"
+            else
+              echo "📝 提交 .srs 文件到 Codeberg 私有仓库..."
+              git add "Sing-Box/RuleSet/"*.srs
+
+              git commit -m "🤖 Auto: Update SRS files in Sing-Box/RuleSet/ from GitHub Actions [skip ci]"
+
+              # 推送到默认分支（通常是 main，也可能是 master，请按你的仓库修改）
+              git push origin master
+              echo "✅ 已推送 .srs 文件到 Codeberg 私有仓库的 Sing-Box/RuleSet/ 目录"
+            fi
+          else
+            echo "ℹ️ 未找到任何 .srs 文件，跳过推送。"
+          fi
 
 #       # Step 3: 使用 sing-box rule-set compile 编译 JSON 为 .srs
 #       - name: Compile Rule Set JSON to .srs
