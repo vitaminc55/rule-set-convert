@@ -3,7 +3,6 @@
     "rules": [
         {
             "domain": [
-                "pbs.twing.com",
                 "sing-box.sagernet.org",
                 "start.me",
                 "static.cloudflareinsights.com",
@@ -56,6 +55,7 @@
             ],
             "domain_suffix": [
                 "twitter.com",
+                "twing.com",
                 "x.com",
                 "sagernet.org",
                 "start.me",
