@@ -3,7 +3,8 @@
     "rules": [
         {
             "domain": [
-                "downloads.wisecleaner.com"
+                "downloads.wisecleaner.com",
+                "copilot.microsoft.com"
             ],
             "domain_suffix": [
                 "browserleaks.com",
