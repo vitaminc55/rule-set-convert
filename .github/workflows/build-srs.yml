@@ -1,11 +1,11 @@
 name: Build Sing-Box Rule Set (.srs)
 
-on:
+于:
   push:
-    branches:
+    分支:
       - main
   pull_request:
-    branches:
+    分支:
       - main
 
 jobs:
@@ -46,6 +46,7 @@ jobs:
             "rules/Proxy.json"
             "rules/Direct.json"
             "rules/cf-proxy.json"
+            "rules/Outbounds.json"
             # 添加更多文件...
           )
 
