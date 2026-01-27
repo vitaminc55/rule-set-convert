@@ -53,6 +53,9 @@
                 "www.okcupid.com",
                 "www.iakeys.com",
                 "icook.tw"
+            ],
+            "domain_suffix": [
+                "the-best-airport.com"
             ]
         }
     ]
