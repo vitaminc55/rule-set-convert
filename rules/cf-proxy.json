@@ -3,7 +3,6 @@
     "rules": [
         {
             "domain": [
-                "linux.do",
                 "sing-box.sagernet.org",
                 "copilot.microsoft.com",
                 "start.me",
@@ -56,6 +55,7 @@
                 "xn--4gq62f52gdss.ink"
             ],
             "domain_suffix": [
+                "linux.do",
                 "javdb.com",
                 "jable.tv",
                 "twitter.com",
