@@ -3,6 +3,7 @@
     "rules": [
         {
             "domain": [
+                "linux.do",
                 "sing-box.sagernet.org",
                 "copilot.microsoft.com",
                 "start.me",
