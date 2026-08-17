@@ -3,6 +3,7 @@
     "rules": [
         {
             "domain": [
+                "cloudflare-ech.com",
                 "challenges.cloudflare.com",
                 "doh.opendns.com",
                 "v.recipes",
