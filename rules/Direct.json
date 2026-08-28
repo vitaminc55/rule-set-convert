@@ -3,11 +3,11 @@
     "rules": [
         {
             "domain": [
-                "immersivetranslate.com",
                 "gist.githubusercontent.com",
                 "api.music.bool.run"
             ],
             "domain_suffix": [
+                "immersivetranslate.com",
                 "syncthing.net",
                 "contaboserver.net",
                 "linux.do",
