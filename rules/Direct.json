@@ -3,6 +3,7 @@
     "rules": [
         {
             "domain": [
+                "immersivetranslate.com",
                 "gist.githubusercontent.com",
                 "api.music.bool.run"
             ],
