@@ -47,6 +47,7 @@ jobs:
             "rules/Direct.json"
             "rules/cf-proxy.json"
             "rules/Outbounds.json"
+            "rules/copilot.json"
             # 添加更多文件...
           )
 
