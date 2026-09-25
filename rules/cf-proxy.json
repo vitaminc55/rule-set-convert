@@ -6,7 +6,6 @@
                 "xsijishe.net",
                 "sjs96.com",
                 "sing-box.sagernet.org",
-                "copilot.microsoft.com",
                 "start.me",
                 "static.cloudflareinsights.com",
                 "newassets.hcaptcha.com",
@@ -57,6 +56,9 @@
                 "xn--4gq62f52gdss.ink"
             ],
             "domain_suffix": [
+                "copilot.microsoft.com",
+                "copilot.fun",
+                "copilot.com",
                 "tineye.com",
                 "linux.do",
                 "javdb.com",
