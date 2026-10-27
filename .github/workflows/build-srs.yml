@@ -2,208 +2,60 @@ name: Build Sing-Box Rule Set (.srs)
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+    branches: [main]
+
+concurrency:
+  group: build-srs-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
 
 jobs:
   build-srs:
     runs-on: ubuntu-latest
+    env:
+      VERSION: "1.12.9"
 
     steps:
-      # Step 1: 检出代码
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      # Step 2: 下载最新版 sing-box（Linux amd64）
-      - name: Download sing-box binary
+      - name: Download sing-box
         run: |
-          # 使用固定版本，推荐不要用 latest
-          SINGBOX_VERSION=v1.12.9
-          SINGBOX_VERSIONN=1.12.9
-
-          # ✅ 正确的下载链接格式
-          URL="https://github.com/sagernet/sing-box/releases/download/$SINGBOX_VERSION/sing-box-$SINGBOX_VERSIONN-linux-amd64.tar.gz"
-
-          echo "Downloading Sing-Box from: $URL"
-          curl -L -o sing-box.tar.gz "$URL"
-
-          # 解压到目录
+          curl -L -o sing-box.tar.gz "https://github.com/sagernet/sing-box/releases/download/v${VERSION}/sing-box-${VERSION}-linux-amd64.tar.gz"
           mkdir -p sing-box-bin
           tar -xzf sing-box.tar.gz -C sing-box-bin
+          chmod +x sing-box-bin/sing-box-${VERSION}-linux-amd64/sing-box
 
-          # 赋予执行权限
-          chmod +x sing-box-bin/sing-box-1.12.9-linux-amd64/sing-box
-
-# Step 3: 定义你要编译的 rules/*.json 文件列表（手动指定，不要自动检测）
-      - name: Compile specific JSON rule files into .srs
+      - name: Compile rule files
         run: |
-          # 📌 在这里指定你要编译的 JSON 文件（放在 rules/ 目录下）
-          # 你可以修改下面的数组，添加或删除文件
-          RULE_JSON_FILES=(
-            "rules/Proxy.json"
-            "rules/Direct.json"
-            "rules/cf-proxy.json"
-            "rules/Outbounds.json"
-            "rules/copilot.json"
-            # 添加更多文件...
-          )
-
-          echo "开始编译以下规则文件："
-          for INPUT_JSON in "${RULE_JSON_FILES[@]}"; do
-            echo "  - $INPUT_JSON"
-
-            # 计算对应的输出 .srs 文件路径，比如 rules/rule1.json → output/rule1.srs
-            OUTPUT_SRS="output/$(basename "$INPUT_JSON" .json).srs"
-
-            # 调用 sing-box 编译
-            ./sing-box-bin/sing-box-1.12.9-linux-amd64/sing-box rule-set compile \
-              --output "$OUTPUT_SRS" "$INPUT_JSON"
-
-            echo "✅ 已生成：$OUTPUT_SRS"
+          mkdir -p output
+          for f in rules/Proxy.json rules/Direct.json rules/cf-proxy.json rules/Outbounds.json rules/copilot.json; do
+            ./sing-box-bin/sing-box-${VERSION}-linux-amd64/sing-box rule-set compile \
+              --output "output/$(basename "$f" .json).srs" "$f"
           done
 
-      # Step 4: 将生成的 .srs 文件添加、提交并推送到仓库
-      - name: Commit and push generated .srs files
+      - name: Push to GitHub
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # 使用 Personal Access Token 推送（推荐，有写入权限）
-          git remote set-url origin https://x-access-token:${{ secrets.GIT_PAT }}@github.com/${{ github.repository }}.git
-
-          # 添加 output/ 目录下所有 .srs 文件（会被覆盖）
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add output/*.srs
+          git diff --quiet --cached && exit 0
+          git commit -m "chore: update .srs rule sets [skip ci]"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin HEAD:"${GITHUB_REF_NAME}"
 
-          # 检查是否有变化
-          if git diff --quiet --cached; then
-            echo "ℹ️ 没有 .srs 文件变化，跳过提交。"
-          else
-            echo "📝 提交生成的 .srs 文件..."
-            git commit -m "🤖 Auto: Update selected SRS rule set files [skip ci]"
-
-            git push origin HEAD:${{ github.ref }}
-            echo "✅ 已推送更新的 .srs 文件到 GitHub 仓库"
-          fi
-
-# Step 5: 将 output/*.srs 文件推送到 Codeberg 私有仓库的 Sing-Box/RuleSet/ 目录
-      - name: Push output .srs files to Codeberg (into Sing-Box/RuleSet/)
+      - name: Push to Codeberg
         run: |
-          echo "开始推送 output/*.srs 文件到 Codeberg 私有仓库的 Sing-Box/RuleSet/ 目录..."
-
-          # ======================
-          # 配置你的 Codeberg 私有仓库地址
-          # ======================
-          CODEBERG_REPO="codeberg.org/Roc/Proxy-All.git"
-          # 替换为你的实际 Codeberg 用户名 和 私有仓库名
-
-          # 本地临时克隆目录
-          CODEBERG_DIR="./codeberg-srs-repo"
-
-          # 删除旧的克隆（如果有）
-          rm -rf "$CODEBERG_DIR"
-
-          # 克隆 Codeberg 私有仓库（使用 GitHub Secrets 中的 PAT）
-          git clone "https://x-access-token:${{ secrets.Codeberg }}@$CODEBERG_REPO" "$CODEBERG_DIR"
-
-          if [ $? -ne 0 ]; then
-            echo "❌ 克隆 Codeberg 私有仓库失败！请检查："
-            echo "1. CODEBERG_REPO 是否正确（https://codeberg.org/用户名/仓库名.git）"
-            echo "2. CODEBERG_PAT 是否正确且拥有 write_repository 权限"
-            exit 1
-          fi
-
-          cd "$CODEBERG_DIR"
-
-          # 确保目标目录存在: Sing-Box/RuleSet/
-          mkdir -p "Sing-Box/RuleSet"
-
-          # 清空或覆盖该目录下的旧 .srs 文件（可选）
-          # 你可以选择删除旧文件，或者直接覆盖
-          rm -f "Sing-Box/RuleSet/"*.srs
-
-          # 从 GitHub Actions 的 output/ 目录中复制所有 .srs 文件到 Codeberg 的 Sing-Box/RuleSet/ 目录
-          cp -f ../output/*.srs "Sing-Box/RuleSet/"
-
-          # 检查是否复制成功
-          if ls "Sing-Box/RuleSet/"*.srs >/dev/null 2>&1; then
-            echo "找到以下 .srs 文件，准备提交到 Codeberg 的 Sing-Box/RuleSet/ 目录："
-            ls -lh "Sing-Box/RuleSet/"*.srs
-
-            # Git 配置
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-
-            git add "Sing-Box/RuleSet/"*.srs
-            
-            # 检查是否有变更
-            if git diff --quiet --cached; then
-              echo "ℹ️ 没有 .srs 文件变化，跳过提交。"
-            else
-              echo "📝 提交 .srs 文件到 Codeberg 私有仓库..."
-
-              git commit -m "🤖 Auto: Update SRS files in Sing-Box/RuleSet/ from GitHub Actions [skip ci]"
-
-              # 推送到默认分支（通常是 main，也可能是 master，请按你的仓库修改）
-              git push origin master
-              echo "✅ 已推送 .srs 文件到 Codeberg 私有仓库的 Sing-Box/RuleSet/ 目录"
-            fi
-          else
-            echo "ℹ️ 未找到任何 .srs 文件，跳过推送。"
-          fi
-
-#       # Step 3: 使用 sing-box rule-set compile 编译 JSON 为 .srs
-#       - name: Compile Rule Set JSON to .srs
-#         run: |
-#           mkdir -p output
-
-#           # 调用 sing-box 进行编译
-#           ./sing-box-bin/sing-box-1.12.9-linux-amd64/sing-box rule-set compile \
-#             --output output/my-rule-set.srs rules/my-rule-set.json
-
-#           # 查看结果
-#           ls -lh output/
-# # =============================
-#       # 假设你已经成功生成了 output/my-rule-set.srs
-#       # =============================
-
-#       # Step 4: 将生成的 .srs 文件提交并推送到 GitHub 仓库
-#       - name: Commit and push generated .srs file
-#         if: success()  # 仅在前面步骤成功时运行
-#         run: |
-#           # 进入项目根目录（如果之前在子目录操作，确保回到仓库根目录）
-#           cd "${GITHUB_WORKSPACE}"
-
-#           # 检查 output/my-rule-set.srs 是否存在
-#           if [ -f "output/my-rule-set.srs" ]; then
-#             echo "✅ 找到生成的 .srs 文件，准备提交..."
-
-#             # 初始化 git（如果尚未初始化，但通常 Actions 已经 clone 了仓库）
-#             git config user.name "github-actions[bot]"
-#             git config user.email "github-actions[bot]@users.noreply.github.com"
-
-#             # 使用你的个人 Token，而不是 GITHUB_TOKEN（因为后者可能无权 push）
-#             git remote set-url origin https://x-access-token:${{ secrets.GIT_PAT }}@github.com/${{ github.repository }}.git
-
-#             # 检查是否有更改
-#             git status
-
-#             # 添加生成的文件
-#             git add output/my-rule-set.srs
-
-#             # 检查是否有要提交的文件
-#             if git diff --quiet --cached; then
-#               echo "ℹ️ 没有文件变化，跳过提交。"
-#             else
-#               echo "📝 提交生成的 .srs 文件..."
-#               git commit -m "🤖 Auto: Update generated SRS rule set file [skip ci]"
-
-#               # 推送到当前分支，比如 main
-#               git push origin HEAD:${{ github.ref }}
-#               echo "✅ 已推送 .srs 文件到 GitHub 仓库"
-#             fi
-#           else
-#             echo "❌ 未找到 output/my-rule-set.srs 文件，跳过提交。"
-#           fi
+          git clone "https://x-access-token:${{ secrets.CODEBERG_TOKEN }}@${{ secrets.CODEBERG_REPO }}" codeberg-tmp
+          cd codeberg-tmp
+          mkdir -p Sing-Box/RuleSet
+          rm -f Sing-Box/RuleSet/*.srs
+          cp -f ../output/*.srs Sing-Box/RuleSet/
+          ls Sing-Box/RuleSet/*.srs >/dev/null 2>&1 || exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Sing-Box/RuleSet/*.srs
+          git diff --quiet --cached && exit 0
+          git commit -m "chore: update SRS files from GitHub Actions [skip ci]"
+          git push origin master
