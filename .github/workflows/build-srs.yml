@@ -1,25 +1,32 @@
+# 工作流名称
 name: Build Sing-Box Rule Set (.srs)
 
+# 触发条件：仅在你 push 到 main 分支时执行
 on:
   push:
     branches: [main]
 
+# 并发控制：同一分支排队执行，避免多次 push 导致推送冲突
 concurrency:
   group: build-srs-${{ github.ref }}
   cancel-in-progress: false
 
+# 权限：授予 GITHUB_TOKEN 写权限，checkout 自动注入后用于 git push
 permissions:
   contents: write
 
 jobs:
   build-srs:
     runs-on: ubuntu-latest
+    # 全局环境变量，所有 step 共享
     env:
       VERSION: "1.12.9"
 
     steps:
+      # 检出仓库代码，自动注入 GITHUB_TOKEN 到 git 配置
       - uses: actions/checkout@v4
 
+      # 下载并解压 sing-box 编译工具
       - name: Download sing-box
         run: |
           curl -L -o sing-box.tar.gz "https://github.com/sagernet/sing-box/releases/download/v${VERSION}/sing-box-${VERSION}-linux-amd64.tar.gz"
@@ -27,6 +34,7 @@ jobs:
           tar -xzf sing-box.tar.gz -C sing-box-bin
           chmod +x sing-box-bin/sing-box-${VERSION}-linux-amd64/sing-box
 
+      # 将 rules/ 下的 JSON 规则文件编译为 .srs 二进制格式
       - name: Compile rule files
         run: |
           mkdir -p output
@@ -35,6 +43,7 @@ jobs:
               --output "output/$(basename "$f" .json).srs" "$f"
           done
 
+      # 将生成的 .srs 文件提交并推回 GitHub 当前分支
       - name: Push to GitHub
         run: |
           git config user.name "github-actions[bot]"
@@ -45,6 +54,7 @@ jobs:
           git pull --rebase origin "${GITHUB_REF_NAME}"
           git push origin HEAD:"${GITHUB_REF_NAME}"
 
+      # 将 .srs 文件同步推送到 Codeberg 私有仓库
       - name: Push to Codeberg
         run: |
           git clone "https://x-access-token:${{ secrets.CODEBERG_TOKEN }}@${{ secrets.CODEBERG_REPO }}" codeberg-tmp
