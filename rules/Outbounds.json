@@ -3,7 +3,7 @@
     "rules": [
         {
             "domain": [
-            
+            "m.com",
                 "cloudflare-ech.com",
                 "challenges.cloudflare.com",
                 "doh.opendns.com",
