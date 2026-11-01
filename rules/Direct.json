@@ -1,17 +1,16 @@
 {
     "version": 1,
-    "rules": [
+    "rules":[
         {
-            "domain": [
+            "domain":[
                 "testingcf.jsdelivr.net",
                 "gist.githubusercontent.com",
                 "api.music.bool.run"
             ],
-            "domain_suffix": [
+            "domain_suffix":[
                 "immersivetranslate.com",
                 "syncthing.net",
                 "contaboserver.net",
-                "linux.do",
                 "gitlab-assets.oss-cn-hongkong.aliyuncs.com",
                 "gitlab-static.net",
                 "gitlab.com",
