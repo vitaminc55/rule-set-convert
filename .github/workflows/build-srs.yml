@@ -54,7 +54,7 @@ jobs:
           git pull --rebase origin "${GITHUB_REF_NAME}"
           git push origin HEAD:"${GITHUB_REF_NAME}"
 
-      # 将 .srs 文件同步推送到 Codeberg 私有仓库
+      # 将 .srs 文件同步推送到 Codeberg 私有仓库，CODEBERG_REPO格式：codeberg.org/xxx/xxxx.git
       - name: Push to Codeberg
         run: |
           git clone "https://x-access-token:${{ secrets.CODEBERG_TOKEN }}@${{ secrets.CODEBERG_REPO }}" codeberg-tmp
