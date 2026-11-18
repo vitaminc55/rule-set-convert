@@ -59,13 +59,13 @@ jobs:
         run: |
           git clone "https://x-access-token:${{ secrets.CODEBERG_TOKEN }}@${{ secrets.CODEBERG_REPO }}" codeberg-tmp
           cd codeberg-tmp
-          mkdir -p Sing-Box/RuleSet
-          rm -f Sing-Box/RuleSet/*.srs
-          cp -f ../output/*.srs Sing-Box/RuleSet/
-          ls Sing-Box/RuleSet/*.srs >/dev/null 2>&1 || exit 0
+          mkdir -p Sing-Box
+          rm -f Sing-Box/*.srs
+          cp -f ../output/*.srs Sing-Box/
+          ls Sing-Box/*.srs >/dev/null 2>&1 || exit 0
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Sing-Box/RuleSet/*.srs
+          git add Sing-Box/*.srs
           git diff --quiet --cached && exit 0
           git commit -m "chore: update SRS files from GitHub Actions [skip ci]"
           git push origin master
