@@ -68,4 +68,4 @@ jobs:
           git add Sing-Box/*.srs
           git diff --quiet --cached && exit 0
           git commit -m "chore: update SRS files from GitHub Actions [skip ci]"
-          git push origin master
+          git push origin main
